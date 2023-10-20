@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kakarote.km.mapper.KmDocumentMapper">
+    <select id="queryById" resultType="com.kakarote.km.entity.VO.DocumentDetailVO">
+        select a.*,b.is_open,b.name libraryName,
+        (select count(1) from `wk_km_collect` b where (`b`.type = 3 or `b`.type = 4) and b.type_id = a.document_id and
+        b.create_user_id = #{userId} ) as collectStatus,
+        (select count(1) from `wk_km_document_favor` c where a.document_id = c.document_id and c.create_user_id =
+        #{userId} ) as faverStatus
+        from `wk_km_document` a
+        left join `wk_km_knowledge_library` b on a.library_id = b.library_id
+        where document_id = #{documentId}
+    </select>
+    <select id="getFileByFileId" resultType="java.lang.Long">
+        select `size` from wk_admin_file where file_id=#{fielId}
+    </select>
+</mapper>

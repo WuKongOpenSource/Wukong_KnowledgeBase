@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kakarote.km.mapper.KmDocumentLabelMapper">
+    <select id="queryDocumentByLabelId" resultType="com.kakarote.km.entity.VO.SearchVO">
+        select a.*, b.name as libraryName
+        from `wk_km_document` a
+        left join `wk_km_knowledge_library` b on a.library_id = b.library_id
+        <if test="isAdmin == false">
+            left join `wk_km_auth` c on a.auth_id = c.auth_id
+            left join `wk_km_auth_user` d on a.auth_id = d.auth_id
+        </if>
+        where find_in_set(#{labelId},label_ids) and a.status != -1
+        <if test="isAdmin == false">
+            and if(b.is_open=1,1=1,d.user_id = #{userId})
+            and if(c.is_open=1,1=1,d.user_id = #{userId})
+        </if>
+        group by a.document_id
+    </select>
+</mapper>

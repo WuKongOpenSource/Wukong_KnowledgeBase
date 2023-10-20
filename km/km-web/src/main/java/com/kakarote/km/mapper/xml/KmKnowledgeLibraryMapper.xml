@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kakarote.km.mapper.KmKnowledgeLibraryMapper">
+    <select id="queryLibraryAuth" resultType="java.lang.Long">
+        SELECT auth_id FROM wk_km_document WHERE library_id = #{libraryId}
+        UNION ALL
+        SELECT auth_id FROM wk_km_folder WHERE library_id = #{libraryId}
+    </select>
+    <select id="queryLibraryList" resultType="com.kakarote.km.entity.VO.LibraryListVO">
+        select a.*,
+        (select count(1) from `wk_km_collect` b where `b`.type = 1 and b.type_id = a.library_id and b.create_user_id =
+        #{userId} ) as collectStatus
+        from `wk_km_knowledge_library` a
+        left join `wk_km_knowledge_library_user` `b` on a.library_id = `b`.library_id
+        where status = 1
+        <if test="isAdmin == false">
+            and (IF(a.is_open = 0, if(b.user_id is not null, b.user_id = #{userId} ,b.dept_id=#{deptId} ), true))
+        </if>
+        <if test="star == 1">
+            and a.library_id in (SELECT b.type_id
+            FROM `wk_km_collect` b
+            WHERE b.type = 1
+            AND b.create_user_id = #{userId})
+        </if>
+        <if test="libraryIds != null and libraryIds.size > 0">
+            and a.library_id in
+            <foreach collection="libraryIds" item="libraryId" open="(" close=")" separator=",">
+                #{libraryId}
+            </foreach>
+        </if>
+        group by a.library_id
+        order by create_time desc
+    </select>
+    <select id="queryLibraryUserList" resultType="com.kakarote.km.entity.BO.LibraryUserBO">
+        SELECT a.user_id,a.role,b.is_open
+        FROM wk_km_knowledge_library_user AS a INNER JOIN wk_km_knowledge_library AS b ON a.library_id=b.library_id
+        WHERE a.library_id=#{libraryId}
+    </select>
+    <select id="queryDocumentByLibraryId" resultType="com.kakarote.km.entity.VO.DocumentVO">
+        select a.document_id, a.title, a.type, a.status, a.library_id, a.folder_id, a.create_time,a.ai_sync_status,
+        (select count(1) from `wk_km_collect` b where (`b`.type = 3 or `b`.type = 4) and b.type_id = a.document_id and
+        b.create_user_id = #{userId} ) as collectStatus,
+        a.file_type
+        from `wk_km_document` a
+        left join `wk_km_auth` c on a.auth_id = c.auth_id
+        <if test="isAdmin == false">
+            left join `wk_km_auth_user` d on a.auth_id = d.auth_id
+        </if>
+        where a.status = 1
+        <if test="isAdmin == false">
+            and IF(c.is_open = 0, d.user_id = #{userId}, 1 = 1)
+        </if>
+        and a.library_id = #{libraryId} and a.status = 1
+        group by a.document_id
+        order by a.create_time desc
+    </select>
+    <select id="queryCollectDocumentByLibraryId" resultType="com.kakarote.km.entity.VO.DocumentVO">
+        select a.document_id, a.title, a.type, a.status, a.library_id, a.folder_id, a.create_time,
+        1 as collectStatus
+        from `wk_km_document` a
+        left join `wk_km_auth` c on a.auth_id = c.auth_id
+        left join `wk_km_auth_user` d on a.auth_id = d.auth_id
+        where a.status = 1
+        and a.library_id=#{libraryId}
+        and a.document_id in (select type_id from `wk_km_collect` b where (`b`.type in ('2','3','4')) and
+        b.create_user_id = #{userId} )
+        group by a.document_id
+        order by a.create_time desc
+    </select>
+    <select id="search" resultType="com.kakarote.km.entity.VO.SearchVO">
+        select a.*,b.name as libraryName from `wk_km_document` a
+        join `wk_km_knowledge_library` b on a.library_id = b.library_id
+        left join wk_km_auth as c on a.auth_id=c.auth_id
+        where a.type in (3,4) and a.status!='-1'
+        and ( a.title like concat('%',#{data.search},'%') or a.content like concat('%',#{data.search},'%'))
+        <if test="data.isAdmin == false">
+            <if test="data.libraryIds != null and data.libraryIds.size > 0">
+                and (a.library_id in
+                <foreach collection="data.libraryIds" item="libraryId" open="(" close=")" separator=",">
+                    #{libraryId}
+                </foreach>
+                or b.is_open=1)
+            </if>
+            <if test="data.libraryIds != null and data.libraryIds.size > 0">
+                and (c.is_open = 1 or a.auth_id in
+                <foreach collection="data.authIds" item="authId" open="(" close=")" separator=",">
+                    #{authId}
+                </foreach>
+                )
+            </if>
+        </if>
+        <if test="data.type != null">
+            <choose>
+                <when test="data.type == 1">
+                    and to_days(a.update_time) = to_days(now())
+                </when>
+                <when test="data.type == 2">
+                    and yearweek(a.update_time) = yearweek(now())-1
+                </when>
+                <when test="data.type == 3">
+                    and month(a.update_time) = month(now())-1
+                </when>
+                <when test="data.type == 4">
+                    and year(a.update_time) = year(now())-1
+                </when>
+                <when test="data.type == 5">
+                    <if test="data.startTime">
+                        and a.update_time >= #{data.startTime}
+                    </if>
+                    <if test="data.endTime">
+                        and a.update_time &lt;= #{data.endTime}
+                    </if>
+                </when>
+            </choose>
+        </if>
+        <if test="data.createUserId != null and data.createUserId != ''">
+            and a.create_user_id = #{data.createUserId}
+        </if>
+        <if test="data.libraryId != null and data.libraryId != ''">
+            and a.library_id = #{data.libraryId}
+        </if>
+    </select>
+</mapper>

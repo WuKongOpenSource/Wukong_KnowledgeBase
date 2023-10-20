@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kakarote.km.mapper.KmCollectMapper">
+    <select id="queryList" resultType="com.kakarote.km.entity.VO.CollectListVO">
+        select a.*,
+        case a.type when 1 then null when 2 then b.title else c.title end as title,
+        case a.type when 1 then (select d.name from `wk_km_knowledge_library` d where d.library_id= a.type_id)
+        when 2 then (select d.name from `wk_km_knowledge_library` d where d.library_id= b.library_id)
+        else (select d.name from `wk_km_knowledge_library` d where d.library_id= c.library_id) end as libraryName,
+        IF(a.type = 1, null, 1) as collectStatus,
+        IF(a.type = 1, (select d.description from `wk_km_knowledge_library` d where d.library_id= a.type_id), null) as
+        description,
+        case a.type when 1 then null when 2 then b.folder_id else c.folder_id end as folder_id,
+        case a.type when 1 then null when 2 then null else c.document_id end as document_id,
+        case a.type when 1 then a.type_id when 2 then b.library_id else c.library_id end as library_id,
+        c.file_type
+        from `wk_km_collect` a
+        left join `wk_km_folder` b on a.type_id = b.folder_id
+        left join `wk_km_document` c on a.type_id = c.document_id
+        where a.create_user_id = #{userId}
+        <if test="type != null and type != 0">
+            and a.type = #{type}
+        </if>
+        <if test="search != null and search != ''">
+            and IF(a.type = 2 and a.type != 1, b.title like concat('%,',#{search},',%'), c.title like
+            concat('%,',#{search},',%'))
+        </if>
+        <if test="collectIds != null and collectIds.size() > 0">
+            and a.collect_id in
+            <foreach collection="collectIds" item="id" separator="," open="(" close=")" index="index">
+                #{id}
+            </foreach>
+        </if>
+    </select>
+    <select id="queryListCount" resultType="com.kakarote.km.entity.VO.CollectNumberListVO">
+        SELECT
+        count( CASE WHEN type = 2 THEN 1 ELSE NULL END ) AS folder_num,
+        count( CASE WHEN type = 3 THEN 1 ELSE NULL END ) AS document_num,
+        count( CASE WHEN type = 4 THEN 1 ELSE NULL END ) AS file_num,
+        count( CASE WHEN type = 1 THEN 1 ELSE NULL END ) AS libraryNum
+        FROM wk_km_collect WHERE create_user_id = #{userId}
+        <if test="collectIds != null and collectIds.size() > 0">
+            and collect_id in
+            <foreach collection="collectIds" item="id" separator="," open="(" close=")" index="index">
+                #{id}
+            </foreach>
+        </if>
+    </select>
+</mapper>

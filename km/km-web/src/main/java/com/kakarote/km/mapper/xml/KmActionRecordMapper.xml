@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kakarote.km.mapper.KmActionRecordMapper">
+    <select id="queryRecordList" resultType="com.kakarote.km.entity.VO.RecordVO">
+        select a.*,
+        (IF(a.type = 2, b.title, c.title)) as title,
+        (IF(a.type = 2, 2, c.type)) as type,
+        (select d.name from `wk_km_knowledge_library` d where d.library_id= if(a.type = 2,b.library_id,c.library_id)) as
+        libraryName,
+        (if(a.type = 2,b.library_id,c.library_id)) as library_id,
+        (if(a.type = 2,b.folder_id,c.folder_id)) as folder_id,
+        (if(a.type = 2,null,c.document_id)) as document_id,
+        c.file_type
+        from `wk_km_action_record` a
+        left join `wk_km_folder` b on a.type_id = b.folder_id
+        left join `wk_km_document` c on a.type_id = c.document_id
+        where a.create_user_id = #{map.userId} and a.type in (2,3,4)
+        <choose>
+            <when test="map.type == 1">
+                and to_days(a.create_time) = to_days(now())
+            </when>
+            <when test="map.type == 2">
+                and to_days(NOW()) = to_days(a.create_time)+1
+            </when>
+            <when test="map.type == 3">
+                and a.create_time between DATE_SUB(CURDATE(), INTERVAL 32 DAY) and DATE_SUB(CURDATE(), INTERVAL 2 DAY)
+            </when>
+        </choose>
+        <if test="map.libraryId != null">
+            and if( a.type = 2, b.library_id, c.library_id )=#{map.libraryId}
+        </if>
+        group by a.type_id
+        order by a.create_time desc
+    </select>
+    <select id="queryDeleteList" resultType="com.kakarote.km.entity.VO.DeleteRecordVO">
+        SELECT
+        b.title,
+        a.type,
+        c.name as libraryName,
+        c.library_id,
+        b.folder_id,
+        b.delete_time,
+        <choose>
+            <when test="type == 2">
+                null as document_id
+            </when>
+            <otherwise>
+                b.document_id
+            </otherwise>
+        </choose>
+        FROM wk_km_action_record as a
+        <choose>
+            <when test="type == 2">
+                JOIN wk_km_folder as b on a.status='2' and a.type=#{type} and a.type_id=b.folder_id
+            </when>
+            <otherwise>
+                JOIN wk_km_document as b on a.status='2' and a.type=#{type} and a.type_id=b.document_id
+            </otherwise>
+        </choose>
+        JOIN wk_km_knowledge_library as c on c.library_id=b.library_id
+        JOIN wk_km_auth as d on b.auth_id=d.auth_id
+        WHERE a.status='2' and (d.is_open=1
+        <if test="authIdList != null and authIdList.size() > 0">
+            or d.auth_id in
+            <foreach collection="authIdList" item="authId" open="(" close=")" separator=",">
+                #{authId}
+            </foreach>
+        </if>
+        )
+        AND b.library_id=#{libraryId}
+    </select>
+    <select id="queryDeleteCount" resultType="com.kakarote.km.entity.VO.DeleteRecordListVO">
+        SELECT
+        count( CASE WHEN a.type = 2 THEN 1 ELSE NULL END ) AS folder_num,
+        count( CASE WHEN a.type = 3 THEN 1 ELSE NULL END ) AS document_num,
+        count( CASE WHEN a.type = 4 THEN 1 ELSE NULL END ) AS file_num
+        FROM
+        wk_km_action_record AS a
+        LEFT JOIN `wk_km_folder` b ON a.type_id = b.folder_id and a.type='2' and b.library_id = #{libraryId}
+        LEFT JOIN `wk_km_document` c ON a.type_id = c.document_id and a.type in (3,4) and c.library_id = #{libraryId}
+        LEFT JOIN wk_km_auth as d on b.auth_id=d.auth_id
+        LEFT JOIN wk_km_auth as e on c.auth_id=e.auth_id
+        WHERE
+        a.`status`='2' and ((d.is_open=1
+        <if test="authIdList != null and authIdList.size() > 0">
+            or d.auth_id in
+            <foreach collection="authIdList" item="authId" open="(" close=")" separator=",">
+                #{authId}
+            </foreach>
+        </if>
+        ) or (e.is_open=1
+        <if test="authIdList != null and authIdList.size() > 0">
+            or e.auth_id in
+            <foreach collection="authIdList" item="authId" open="(" close=")" separator=",">
+                #{authId}
+            </foreach>
+        </if>
+        ))
+        and (b.library_id is not null or c.library_id is not null)
+        and (b.library_id = #{libraryId} or c.library_id = #{libraryId} )
+    </select>
+    <select id="queryLibraryDeleteList" resultType="com.kakarote.km.entity.PO.KmKnowledgeLibrary">
+        SELECT
+        b.*
+        FROM
+        wk_km_action_record AS a
+        JOIN wk_km_knowledge_library AS b ON a.type = '1'
+        AND a.type_id = b.library_id
+        WHERE
+        a.`status` = '2'
+        and a.create_user_id = #{userId}
+        order by a.create_time desc
+    </select>
+    <select id="restoreFolderIdList" resultType="java.lang.Long">
+        SELECT folder_id FROM wk_km_folder as a
+        WHERE a.folder_id not in (
+        SELECT type_id FROM wk_km_action_record WHERE status='2' and type='2'
+        )
+        and a.parent_id=#{folderId}
+    </select>
+    <select id="restoreDocumentList" resultType="com.kakarote.km.entity.PO.KmDocument">
+        SELECT * FROM wk_km_document as a
+        WHERE a.document_id not in (
+        SELECT type_id FROM wk_km_action_record WHERE status='2' and type='3'
+        )
+        <if test="documentId != null">
+            and a.parent_id=#{documentId}
+        </if>
+        <if test="folderId != null">
+            and a.folder_id=#{folderId}
+        </if>
+    </select>
+</mapper>

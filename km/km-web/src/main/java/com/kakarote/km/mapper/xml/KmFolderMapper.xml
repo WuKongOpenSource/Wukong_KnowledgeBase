@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.kakarote.km.mapper.KmFolderMapper">
+    <select id="queryLibraryUserList" resultType="com.kakarote.km.entity.BO.LibraryUserBO">
+        SELECT a.user_id,a.role,b.is_open
+        FROM wk_km_knowledge_library_user AS a
+        INNER JOIN wk_km_knowledge_library AS b
+        ON a.library_id = b.library_id
+        WHERE a.library_id = #{libraryId}
+    </select>
+    <select id="queryFolderList" resultType="com.kakarote.km.entity.VO.FolderTreeVO">
+        select a.folder_id, a.library_id, a.parent_id, a.title, a.auth_id
+        from `wk_km_folder` a
+        <if test="isAdmin == false">
+            left join `wk_km_auth` b on a.auth_id = b.auth_id
+            left join `wk_km_auth_user` c on a.auth_id = c.auth_id
+        </if>
+        where a.library_id = #{libraryId}
+        and status = 1
+        <if test="isAdmin == false">
+            and IF(b.is_open = 0, if(c.user_id is not null, c.user_id = #{userId}, c.dept_id = #{deptId}), true)
+        </if>
+        group by a.folder_id
+    </select>
+    <select id="queryFirstDocumentList" resultType="com.kakarote.km.entity.VO.DocumentTreeVO">
+        select a.document_id, a.title, a.type, a.library_id, a.folder_id, a.create_time,a.auth_id,a.file_type from `wk_km_document`
+        a
+        <if test="isAdmin == false">
+            left join `wk_km_auth` b on a.auth_id = b.auth_id
+            left join `wk_km_auth_user` c on a.auth_id = c.auth_id
+        </if>
+        where a.library_id = #{libraryId} and a.folder_id = 0 and a.status = 1 and a.parent_id = 0
+        <if test="isAdmin == false">
+            and IF(b.is_open = 0, if(c.user_id is not null, c.user_id = #{userId}, c.dept_id = #{deptId}), true)
+        </if>
+        group by a.document_id
+    </select>
+    <select id="queryFolderDocumentList" resultType="com.kakarote.km.entity.VO.DocumentTreeVO">
+        select a.document_id, a.title, a.type, a.library_id, a.folder_id, a.create_time,a.auth_id,a.file_type
+        from `wk_km_document` a where folder_id = #{folderId} and status = 1
+    </select>
+    <select id="queryChildKmDocumentList" resultType="com.kakarote.km.entity.VO.DocumentTreeVO">
+        select a.document_id, a.title, a.type, a.library_id, a.folder_id, a.create_time,a.auth_id,a.file_type
+        from `wk_km_document` a where a.parent_id = #{documentId} and status = 1
+    </select>
+    <select id="queryById" resultType="com.kakarote.km.entity.VO.FolderDetailVO">
+        select a.*,b.is_open,
+        (select count(1) from `wk_km_collect` b where `b`.type = 2 and b.type_id = a.folder_id and b.create_user_id =
+        #{userId} ) as collectStatus
+        from `wk_km_folder` a
+        left join `wk_km_knowledge_library` b on a.library_id = b.library_id
+        where a.folder_id = #{folderId}
+    </select>
+    <select id="queryDocumentByFolderId" resultType="com.kakarote.km.entity.VO.DocumentVO">
+        select DISTINCT a.document_id, a.title, a.type, a.library_id, a.folder_id, a.create_time,
+        (select count(1) from `wk_km_collect` d where (`d`.type = 3 or `d`.type = 4) and d.type_id = a.document_id and
+        d.create_user_id = #{userId}) as collectStatus,
+        a.file_type
+        from `wk_km_document` a
+        <if test="isAdmin == false">
+            left join `wk_km_auth` b on a.auth_id = b.auth_id
+            left join `wk_km_auth_user` c on a.auth_id = c.auth_id and (b.is_open='0' or c.user_id =#{userId})
+        </if>
+        where a.folder_id = #{folderId} and a.status != '-1'
+        and document_id not in(SELECT type_id FROM wk_km_action_record WHERE create_user_id=#{userId} and type
+        in('3','4') and `status`='2')
+    </select>
+    <select id="queryChildFolderByFolderId" resultType="com.kakarote.km.entity.VO.FolderVO">
+        select DISTINCT a.folder_id, a.library_id, a.parent_id, a.title,a.auth_id,
+        (select count(1) from `wk_km_collect` b where `b`.type = 2 and b.type_id = a.folder_id and b.create_user_id =
+        #{userId}) as collectStatus
+        from `wk_km_folder` a
+        <if test="isAdmin == false">
+            left join `wk_km_auth` b on a.auth_id = b.auth_id
+            left join `wk_km_auth_user` c on a.auth_id = c.auth_id and (b.is_open='0' or c.user_id =#{userId})
+        </if>
+        where a.parent_id = #{folderId}
+        and folder_id not in(SELECT type_id FROM wk_km_action_record WHERE create_user_id=#{userId} and type in('2') and
+        `status`='2')
+    </select>
+    <select id="queryAllDocumentListBylibraryId" resultType="com.kakarote.km.entity.VO.DocumentTreeVO">
+        select a.document_id, a.title, a.type, a.library_id, a.folder_id, a.create_time,a.auth_id
+        from `wk_km_document` a where folder_id=(select folder_id from wk_km_folder where library_id=#{libraryId})
+    </select>
+    <select id="queryAllFolderByLibraryId" resultType="Long">
+        select folder_id from wk_km_folder where library_id=#{libraryId}
+    </select>
+    <select id="querySonFolderByFolderId" resultType="Long">
+        select folder_id from wk_km_folder where parent_id in
+        <foreach collection="FolderId" item="id" separator="," open="(" close=")" index="index">
+            #{id}
+        </foreach>
+    </select>
+    <select id="queryDocumentById" resultType="com.kakarote.km.entity.VO.DocumentTreeVO">
+        select * from wk_km_document where folder_id=#{folderId}
+    </select>
+    <select id="queryStatusThreeNumber" resultType="java.lang.Integer">
+        select COUNT(*) from wk_km_document where library_id=#{libraryId} and type=3 and `status`=1
+    </select>
+    <select id="queryStatusFourNumber" resultType="java.lang.Integer">
+        select COUNT(*) from wk_km_document where library_id=#{libraryId} and type=4 and `status`=1
+    </select>
+</mapper>
