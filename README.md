@@ -1,4 +1,4 @@
-# wk_open_km
+# Wukong_Wiki
 体验地址：[https://www.72crm.com](http://www.72crm.com)
 
 ## 悟空知识库管理介绍
@@ -158,12 +158,13 @@ su elasticsearch
 
 ###### 4. 访问[悟空ID](https://id.72crm.com/)获取账号
 ###### 注册之后点击默认企业,应用列表中选择知识库管理
-![默认企业](img/007.png "img1.png")
+![默认企业](img/640.png "img/640.png")
 ###### 点击知识库管理
-![知识库管理](img/008.png "img2.png")
+![知识库管理](img/640-2.png "img2.png")
 ##### 将App ID，accessKey，secretKey复制到 km-web\src\main\resources\application.yml，分别对应appId，clientId，clientSecret 如下图所示
-![代码配置](img/009.png "img4.png")
+![代码配置](img/640-3.png "img4.png")
 将appId复制到km-web\src\main\resources\static\APPLICATION_ID.txt内，替换里面内容
+![代码配置](img/640-4.png "img5.png")
 ###### 5. 项目打包部署
 ```
 --项目打包
@@ -204,9 +205,9 @@ sh 72crm.sh start
 敬请期待
 ```
 ### 四、悟空知识库功能模块预览
-![输入图片说明](img/001.png)
-![输入图片说明](img/002.png)
-![输入图片说明](img/003.png)
-![输入图片说明](img/004.png)
-![输入图片说明](img/005.png)
-![输入图片说明](img/006.png)
+![输入图片说明](img/640-9.png)
+![输入图片说明](img/640-10.png)
+![输入图片说明](img/640-11.png)
+![输入图片说明](img/640-12.png)
+![输入图片说明](img/640-13.png)
+![输入图片说明](img/640-14.png)
