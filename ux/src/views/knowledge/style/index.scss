@@ -1,0 +1,80 @@
+.wk-tabs {
+  padding-top: 5px;
+
+  ::v-deep .el-tabs__header {
+    padding: 0 20px;
+    margin: 0;
+
+    .el-tabs__nav-wrap::after {
+      display: none;
+    }
+  }
+
+  .wk-tab-pane-label {
+    .text {}
+
+    .el-badge {
+      margin-left: 5px;
+
+      ::v-deep .el-badge__content {
+        top: -0.1em;
+        color: $--color-text-secondary;
+        background-color: #f0f0f0;
+      }
+    }
+  }
+}
+
+.el-table {
+  border-top: 1px solid $--border-color-base;
+
+  /* ::v-deep th {
+    padding: 15px 0;
+    background-color: white;
+    &:hover {
+      background-color: white;
+    }
+    & > .cell {
+      font-size: 14px;
+    }
+  } */
+  ::v-deep .el-table__body td {
+    padding: 10px 0;
+  }
+
+  .file-main {
+    cursor: pointer;
+
+    .file-icon {
+      margin-right: 10px;
+      font-size: 16px;
+      color: $--color-text-regular;
+      vertical-align: middle;
+    }
+
+    .img-icon {
+      width: 16px;
+      margin: 0 10px 0 0;
+      vertical-align: middle;
+    }
+
+    .file-name {
+      font-size: 14px;
+    }
+
+    .file-desc {
+      margin-left: 10px;
+      font-size: 12px;
+      color: $--color-text-regular;
+      vertical-align: middle;
+    }
+  }
+
+  .file-collect-time {
+    color: $--color-text-regular;
+  }
+
+  .file-collect-icon {
+    color: #fac23d;
+  }
+}
