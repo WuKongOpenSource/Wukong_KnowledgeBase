@@ -72,7 +72,17 @@ wk_open_km
 
 # 使用说明
 
-### 一、前置环境
+### 一、本项目安装需要在Linux环境下进行，可在虚拟机中安装Linux环境
+
+Linux 环境配置要求如下：
+
+推荐使用系统：centos
+系统内存：≥16G
+系统CPU：≥4核
+磁盘大小：≥100G
+
+### 二、前置环境，需要在Linux环境下安装以下配置
+
 - Jdk1.8
 - Maven3.5^
 - Mysql8^
@@ -84,27 +94,33 @@ wk_open_km
 #### 一、依赖环境安装
 
 ###### 1. 安装jdk
+
 ```
 yum -y install java-1.8.0-openjdk-devel;
 ```
 
 ###### 2. 安装redis
+
 ```
 yum -y install epel-release;
 yum -y install redis;
-chkconfig redis on;
+systemctl start redis
+
 #-- 修改redis密码为123456
 yum -y install vim;
 vim /etc/redis.conf;
+
 #-- 在文件最下面追加一行
 requirepass 123456
 #-- 或者输入 / 搜索 # requirepass foobared
 #-- 将前面的#删除，将foobared改为123456
 #-- 修改完成之后 :wq 保存并退出,重启redis
-service redis restart;
+
+systemctl restart redis
 ```
 
 ###### 3.安装mysql
+
 ```
 wget https://repo.mysql.com//mysql80-community-release-el7-3.noarch.rpm
 yum -y install mysql80-community-release-el7-3.noarch.rpm
@@ -129,15 +145,42 @@ vim /etc/my.cnf;
 --输入 i 进入编辑模式，修改sql_mode设置，将下面sql_mode配置复制，到 [mysqld]下使用 shift+insert 粘贴
 sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION 
 --修改完毕，按esc按键，然后 :wq 保存并退出，重启mysql
+
+
 service mysqld restart;
 ```
+
 ### 4.安装elasticsearch(es)
+
 ```
---下载es
+--下载es  
+
+# 注意不要放在root目录下
+
+useradd elasticsearch
 wget https://artifacts.elastic.co/downloads/elasticsearch/elasticsearch-8.5.3-linux-x86_64.tar.gz
 tar xvf elasticsearch-8.5.3-linux-x86_64.tar.gz
-chown -R elasticsearch:elasticsearch elasticsearch-8.5.3-linux-x86_64 
-chmod -R 777 elasticsearch-8.5.3-linux-x86_64
+chown -R elasticsearch:elasticsearch  elasticsearch-8.5.3 
+chmod -R 777  elasticsearch-8.5.3
+
+--修改es配置文件:elasticsearch.yml
+
+# 安装es如有以下配置信息，需要修改配置信息
+
+ingest.geoip.downloader.enabled: false  ## 添加配置
+xpack.security.enabled: true
+xpack.security.enrollment.enabled: true
+
+xpack.security.http.ssl:
+  enabled: false        # 改为false
+  keystore.path: certs/http.p12
+
+Enable encryption and mutual authentication between cluster nodes
+xpack.security.transport.ssl:
+  enabled: false         # 改为false
+  verification_mode: certificate
+  keystore.path: certs/transport.p12
+  truststore.path: certs/transport.p12
 
 -- 安装es分词器
 ./elasticsearch-plugin install analysis-icu
@@ -147,11 +190,14 @@ chmod -R 777 elasticsearch-8.5.3-linux-x86_64
 -- 进入bin启动es
 su elasticsearch
 ./elasticsearch
-
 ```
+
 #### 二、项目配置与启动
 
+yum -y install maven
+
 ###### 1.导入DB目录下数据库
+
 ###### 2.在项目根目录执行mvn install
 ###### 2.修改配置信息
 ###### 3.在km模块下resource目录配置数据库帐号信息以及redis帐号信息`
