@@ -1,4 +1,6 @@
 # Wukong_KnowledgeBase
+
+### 🌐Read This in [English](README_EN.md)
 体验地址：[https://www.72crm.com](http://www.72crm.com)
 
 ## 悟空知识库管理介绍
